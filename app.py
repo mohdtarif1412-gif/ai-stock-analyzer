@@ -71,7 +71,7 @@ try:
     if data.empty:
         st.error(f"❌ No data found for {ticker}. Check the ticker symbol.")
         st.stop()
-
+data = data.dropna()
     company_name = info.get("longName", ticker_input)
     st.subheader(f"🏢 {company_name}")
     
