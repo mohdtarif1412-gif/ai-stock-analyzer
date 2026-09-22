@@ -73,30 +73,30 @@ try:
         st.stop()
     data = data.dropna()
     # ---------- TECHNICAL INDICATORS ----------
-# 1. Moving Averages
-data['MA50'] = data['Close'].rolling(window=50).mean()
-data['MA200'] = data['Close'].rolling(window=200).mean()
+    # 1. Moving Averages
+    data['MA50'] = data['Close'].rolling(window=50).mean()
+    data['MA200'] = data['Close'].rolling(window=200).mean()
 
-# 2. RSI (14 day)
-delta = data['Close'].diff()
-gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-rs = gain / loss
-data['RSI'] = 100 - (100 / (1 + rs))
+    # 2. RSI (14 day)
+    delta = data['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    data['RSI'] = 100 - (100 / (1 + rs))
 
-# 3. MACD
-exp1 = data['Close'].ewm(span=12, adjust=False).mean()
-exp2 = data['Close'].ewm(span=26, adjust=False).mean()
-data['MACD'] = exp1 - exp2
-data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False).mean()
+    # 3. MACD
+    exp1 = data['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = data['Close'].ewm(span=26, adjust=False).mean()
+    data['MACD'] = exp1 - exp2
+    data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False).mean()
 
-# Latest values nikalo
-latest_rsi = data['RSI'].iloc[-1]
-latest_macd = data['MACD'].iloc[-1]
-latest_signal = data['Signal_Line'].iloc[-1]
-latest_ma50 = data['MA50'].iloc[-1]
-latest_ma200 = data['MA200'].iloc[-1]
-latest_price = data['Close'].iloc[-1]
+    # Latest values nikalo
+    latest_rsi = data['RSI'].iloc[-1]
+    latest_macd = data['MACD'].iloc[-1]
+    latest_signal = data['Signal_Line'].iloc[-1]
+    latest_ma50 = data['MA50'].iloc[-1]
+    latest_ma200 = data['MA200'].iloc[-1]
+    latest_price = data['Close'].iloc[-1]
     company_name = info.get("longName", ticker_input)
     st.subheader(f"🏢 {company_name}")
     
