@@ -72,6 +72,31 @@ try:
         st.error(f"❌ No data found for {ticker}. Check the ticker symbol.")
         st.stop()
     data = data.dropna()
+    # ---------- TECHNICAL INDICATORS ----------
+# 1. Moving Averages
+data['MA50'] = data['Close'].rolling(window=50).mean()
+data['MA200'] = data['Close'].rolling(window=200).mean()
+
+# 2. RSI (14 day)
+delta = data['Close'].diff()
+gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+rs = gain / loss
+data['RSI'] = 100 - (100 / (1 + rs))
+
+# 3. MACD
+exp1 = data['Close'].ewm(span=12, adjust=False).mean()
+exp2 = data['Close'].ewm(span=26, adjust=False).mean()
+data['MACD'] = exp1 - exp2
+data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False).mean()
+
+# Latest values nikalo
+latest_rsi = data['RSI'].iloc[-1]
+latest_macd = data['MACD'].iloc[-1]
+latest_signal = data['Signal_Line'].iloc[-1]
+latest_ma50 = data['MA50'].iloc[-1]
+latest_ma200 = data['MA200'].iloc[-1]
+latest_price = data['Close'].iloc[-1]
     company_name = info.get("longName", ticker_input)
     st.subheader(f"🏢 {company_name}")
     
@@ -147,6 +172,51 @@ try:
 
 except Exception as e:
     st.error(f"⚠️ Error: {str(e)}")
+# ---------- TECHNICAL ANALYSIS SECTION ----------
+st.markdown("---")
+st.subheader("📊 Technical Indicators")
 
+tcol1, tcol2, tcol3 = st.columns(3)
+
+with tcol1:
+    if latest_rsi < 30:
+        st.metric("RSI (14)", f"{latest_rsi:.2f}", "Oversold 🟢")
+    elif latest_rsi > 70:
+        st.metric("RSI (14)", f"{latest_rsi:.2f}", "Overbought 🔴")
+    else:
+        st.metric("RSI (14)", f"{latest_rsi:.2f}", "Neutral ⚪")
+
+with tcol2:
+    macd_status = "Bullish" if latest_macd > latest_signal else "Bearish"
+    st.metric("MACD", f"{latest_macd:.2f}", macd_status)
+
+with tcol3:
+    ma_status = "Uptrend" if latest_ma50 > latest_ma200 else "Downtrend"
+    st.metric("MA50 vs MA200", f"₹{latest_ma50:.2f} / ₹{latest_ma200:.2f}", ma_status)
+
+# ---------- BUY/SELL SIGNAL ----------
+st.markdown("---")
+st.subheader("🎯 AI Trading Signal")
+
+score = 0
+if latest_rsi < 30: score += 1
+if latest_rsi > 70: score -= 1
+if latest_macd > latest_signal: score += 1
+else: score -= 1
+if latest_ma50 > latest_ma200: score += 1
+else: score -= 1
+
+if score >= 2:
+    st.success(f"🟢 **STRONG BUY** — Score: {score}/3 (Indicators bullish hai)")
+elif score == 1:
+    st.info(f"🔵 **BUY** — Score: {score}/3 (Thoda positive trend)")
+elif score == 0:
+    st.warning(f"🟡 **HOLD** — Score: {score}/3 (Market confused hai)")
+elif score == -1:
+    st.warning(f"🟠 **SELL** — Score: {score}/3 (Thoda negative trend)")
+else:
+    st.error(f"🔴 **STRONG SELL** — Score: {score}/3 (Indicators bearish hai)")
+
+st.caption("⚠️ Ye AI-generated signal hai, financial advice nahi.")
 st.markdown("---")
 st.caption(f"Data source: Yahoo Finance | Last updated: {datetime.now().strftime('%d %b %Y, %H:%M')}")
