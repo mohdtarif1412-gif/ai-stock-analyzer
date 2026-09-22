@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime
-
+import google.generativeai as genai
 st.set_page_config(
     page_title="AI Stock Analyzer",
     page_icon="📈",
@@ -220,3 +220,57 @@ else:
 st.caption("⚠️ Ye AI-generated signal hai, financial advice nahi.")
 st.markdown("---")
 st.caption(f"Data source: Yahoo Finance | Last updated: {datetime.now().strftime('%d %b %Y, %H:%M')}")
+# ---------- AI CHATBOT ----------
+st.markdown("---")
+st.subheader("🤖 AI Stock Assistant")
+st.caption("Stock ke bare me kuch bhi pucho — Hinglish me jawab milega")
+
+try:
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    model = genai.GenerativeModel('gemini-pro')
+    
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+    
+    if prompt := st.chat_input("Stock ke bare me kuch bhi pucho..."):
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        context = f"""
+        Stock: {ticker_input}
+        Current Price: ₹{latest_price:.2f}
+        RSI: {latest_rsi:.2f}
+        MACD: {latest_macd:.2f}
+        MA50: ₹{latest_ma50:.2f}
+        MA200: ₹{latest_ma200:.2f}
+        Trading Signal Score: {score}/3
+        """
+        
+        full_prompt = f"""
+        You are an expert stock market AI assistant helping retail investors.
+        Answer in simple Hinglish (Hindi + English mix, Roman script).
+        Keep answers short, clear, and educational.
+        
+        Current stock data:
+        {context}
+        
+        User question: {prompt}
+        
+        Give a helpful, educational response. Do NOT give direct financial advice.
+        """
+        
+        with st.chat_message("assistant"):
+            with st.spinner("AI soch raha hai..."):
+                response = model.generate_content(full_prompt)
+                st.markdown(response.text)
+        
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+
+except Exception as e:
+    st.warning("⚠️ Chatbot ke liye Streamlit Secrets me GOOGLE_API_KEY add karo.")
+    st.caption(f"Error detail: {str(e)}")
