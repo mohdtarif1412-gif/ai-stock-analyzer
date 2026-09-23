@@ -174,7 +174,33 @@ with st.sidebar:
     st.caption("⚠️ Educational tool only. Not financial advice.")
 
 ticker = f"{ticker_input}.NS"
+# Sentiment keywords
+POSITIVE_WORDS = ['surge', 'gain', 'rise', 'profit', 'growth', 'up', 'high', 'record', 'strong', 'bullish', 'upgrade', 'beat', 'positive', 'jump', 'soar', 'rally', 'boom', 'win', 'expand']
+NEGATIVE_WORDS = ['fall', 'drop', 'loss', 'decline', 'down', 'low', 'weak', 'bearish', 'downgrade', 'miss', 'negative', 'crash', 'slump', 'plunge', 'cut', 'layoff', 'fraud', 'lawsuit', 'debt']
 
+def analyze_sentiment(text):
+    """Keyword-based sentiment analysis"""
+    if not text:
+        return "Neutral", 0
+    text_lower = text.lower()
+    pos = sum(1 for w in POSITIVE_WORDS if w in text_lower)
+    neg = sum(1 for w in NEGATIVE_WORDS if w in text_lower)
+    if pos > neg:
+        return "Positive", 1
+    elif neg > pos:
+        return "Negative", -1
+    else:
+        return "Neutral", 0
+
+@st.cache_data(ttl=600)
+def fetch_news(ticker):
+    """Fetch news from yfinance"""
+    try:
+        stock = yf.Ticker(ticker)
+        news = stock.news
+        return news[:8] if news else []
+    except:
+        return []
 @st.cache_data(ttl=300)
 def fetch_data(ticker, period):
     stock = yf.Ticker(ticker)
@@ -299,7 +325,56 @@ try:
 
 except Exception as e:
     st.error(f"⚠️ Error: {str(e)}")
+# ==========================================
+# NEWS + SENTIMENT
+# ==========================================
+st.markdown("---")
+st.subheader("📰 Latest News & Sentiment")
 
+news_items = fetch_news(ticker)
+
+if not news_items:
+    st.info("No recent news available for this stock.")
+else:
+    total_score = 0
+    news_data = []
+    
+    for item in news_items:
+        title = item.get('title', '')
+        publisher = item.get('publisher', 'Unknown')
+        link = item.get('link', '#')
+        sentiment, s_score = analyze_sentiment(title)
+        total_score += s_score
+        news_data.append({
+            'title': title,
+            'publisher': publisher,
+            'link': link,
+            'sentiment': sentiment
+        })
+    
+    # Overall sentiment gauge
+    avg_score = total_score / len(news_data)
+    if avg_score > 0.3:
+        st.success(f"📊 **Overall Sentiment: BULLISH** (Score: {avg_score:+.2f})")
+    elif avg_score < -0.3:
+        st.error(f"📊 **Overall Sentiment: BEARISH** (Score: {avg_score:+.2f})")
+    else:
+        st.info(f"📊 **Overall Sentiment: NEUTRAL** (Score: {avg_score:+.2f})")
+    
+    # News list
+    for n in news_data:
+        if n['sentiment'] == 'Positive':
+            badge = "🟢 Positive"
+        elif n['sentiment'] == 'Negative':
+            badge = "🔴 Negative"
+        else:
+            badge = "⚪ Neutral"
+        
+        st.markdown(f"**{n['title']}**")
+        st.caption(f"📰 {n['publisher']} | Sentiment: {badge} | [Read more]({n['link']})")
+        st.markdown("")
+
+    st.caption("⚠️ Sentiment analysis is keyword-based. Not financial advice.")
 # ==========================================
 # STOCK COMPARISON
 # ==========================================
