@@ -187,6 +187,107 @@ st.markdown("""
         font-weight: 700;
         letter-spacing: -0.5px;
     }
+    /* Sidebar text inputs */
+section[data-testid="stSidebar"] .stTextInput > div > div > input {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Sidebar selectbox */
+section[data-testid="stSidebar"] .stSelectbox > div > div {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+}
+
+section[data-testid="stSidebar"] .stSelectbox svg {
+    fill: #00C853 !important;
+}
+
+/* Dropdown menu background */
+div[data-baseweb="popover"] {
+    background: #1a1f2e !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+div[data-baseweb="popover"] li {
+    background: #1a1f2e !important;
+    color: white !important;
+}
+
+div[data-baseweb="popover"] li:hover {
+    background: rgba(0, 200, 83, 0.15) !important;
+}
+
+/* Radio buttons in sidebar */
+section[data-testid="stSidebar"] .stRadio label {
+    color: #ffffff !important;
+}
+
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label span {
+    color: #c8d0e0 !important;
+}
+
+/* Labels in sidebar */
+section[data-testid="stSidebar"] label {
+    color: #b8c0d0 !important;
+    font-weight: 500 !important;
+}
+
+/* Main area labels */
+.stTextInput label, .stSelectbox label, .stRadio label {
+    color: #b8c0d0 !important;
+    font-weight: 500 !important;
+}
+
+/* Placeholder text */
+input::placeholder {
+    color: #666 !important;
+}
+
+/* Main area selectbox */
+.stSelectbox > div > div {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Metric values - fix visibility */
+div[data-testid="stMetricLabel"] > div {
+    color: #8892a6 !important;
+}
+
+div[data-testid="stMetricValue"] {
+    color: #ffffff !important;
+    text-shadow: 0 0 20px rgba(0, 200, 83, 0.15);
+}
+
+/* Caption text */
+.stCaption, small {
+    color: #8892a6 !important;
+}
+
+/* Chat input */
+.stChatInput textarea {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Tabs text */
+.stTabs [data-baseweb="tab"] {
+    color: #b8c0d0 !important;
+}
+
+.stTabs [aria-selected="true"] {
+    color: white !important;
+}
+
+/* Divider */
+hr {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
