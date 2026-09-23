@@ -154,7 +154,14 @@ with st.sidebar:
         "Chart Type",
         ["Candlestick", "Line", "Area"]
     )
-    
+    st.markdown("---")
+    compare_mode = st.checkbox("⚖️ Compare with another stock")
+    if compare_mode:
+    ticker_input_2 = st.text_input(
+        "Second NSE Ticker",
+        value="TCS",
+        help="Example: TCS, INFY, HDFCBANK"
+     ).upper().strip()
     st.markdown("---")
     
     # Chat toggle button
@@ -346,7 +353,113 @@ try:
         st.error(f"🔴 **STRONG SELL** — Score: {score}/3")
     
     st.caption("⚠️ This is AI-generated analysis, not financial advice.")
-
+    # ==========================================
+# STOCK COMPARISON
+# ==========================================
+if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
+    st.markdown("---")
+    st.subheader("⚖️ Stock Comparison")
+    
+    ticker_2 = f"{ticker_input_2}.NS"
+    
+    try:
+        with st.spinner(f"Loading {ticker_2} data..."):
+            data2, info2 = fetch_data(ticker_2, period)
+        
+        if data2.empty:
+            st.error(f"❌ No data found for {ticker_2}")
+        else:
+            data2 = data2.dropna()
+            
+            # Technical indicators for stock 2
+            data2['MA50'] = data2['Close'].rolling(window=50).mean()
+            data2['MA200'] = data2['Close'].rolling(window=200).mean()
+            
+            delta2 = data2['Close'].diff()
+            gain2 = (delta2.where(delta2 > 0, 0)).rolling(window=14).mean()
+            loss2 = (-delta2.where(delta2 < 0, 0)).rolling(window=14).mean()
+            rs2 = gain2 / loss2
+            data2['RSI'] = 100 - (100 / (1 + rs2))
+            
+            exp1_2 = data2['Close'].ewm(span=12, adjust=False).mean()
+            exp2_2 = data2['Close'].ewm(span=26, adjust=False).mean()
+            data2['MACD'] = exp1_2 - exp2_2
+            data2['Signal_Line'] = data2['MACD'].ewm(span=9, adjust=False).mean()
+            
+            rsi_2 = data2['RSI'].iloc[-1]
+            macd_2 = data2['MACD'].iloc[-1]
+            signal_2 = data2['Signal_Line'].iloc[-1]
+            ma50_2 = data2['MA50'].iloc[-1]
+            ma200_2 = data2['MA200'].iloc[-1]
+            price_2 = data2['Close'].iloc[-1]
+            
+            # Score for stock 2
+            score2 = 0
+            if rsi_2 < 30: score2 += 1
+            if rsi_2 > 70: score2 -= 1
+            if macd_2 > signal_2: score2 += 1
+            else: score2 -= 1
+            if ma50_2 > ma200_2: score2 += 1
+            else: score2 -= 1
+            
+            # Side-by-side metrics
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"### 📈 {ticker_input}")
+                st.metric("Price", f"₹{latest_price:.2f}")
+                st.metric("RSI (14)", f"{latest_rsi:.2f}")
+                st.metric("MACD", f"{latest_macd:.2f}")
+                st.metric("MA50", f"₹{latest_ma50:.2f}")
+                st.metric("Trading Score", f"{score}/3")
+            
+            with col2:
+                st.markdown(f"### 📈 {ticker_input_2}")
+                st.metric("Price", f"₹{price_2:.2f}")
+                st.metric("RSI (14)", f"{rsi_2:.2f}")
+                st.metric("MACD", f"{macd_2:.2f}")
+                st.metric("MA50", f"₹{ma50_2:.2f}")
+                st.metric("Trading Score", f"{score2}/3")
+            
+            # Winner
+            st.markdown("### 🏆 Verdict")
+            if score > score2:
+                st.success(f"**{ticker_input}** looks better based on technical indicators (Score: {score} vs {score2})")
+            elif score2 > score:
+                st.success(f"**{ticker_input_2}** looks better based on technical indicators (Score: {score2} vs {score})")
+            else:
+                st.info(f"Both stocks are equally rated (Score: {score} vs {score2})")
+            
+            # Normalized comparison chart
+            st.markdown("### 📊 Price Comparison (Normalized to 100)")
+            fig_compare = go.Figure()
+            fig_compare.add_trace(go.Scatter(
+                x=data.index,
+                y=(data['Close'] / data['Close'].iloc[0]) * 100,
+                mode='lines',
+                name=ticker_input,
+                line=dict(color='#00C853', width=2)
+            ))
+            fig_compare.add_trace(go.Scatter(
+                x=data2.index,
+                y=(data2['Close'] / data2['Close'].iloc[0]) * 100,
+                mode='lines',
+                name=ticker_input_2,
+                line=dict(color='#00B0FF', width=2)
+            ))
+            fig_compare.update_layout(
+                template='plotly_dark',
+                height=400,
+                hovermode='x unified',
+                margin=dict(l=0, r=0, t=30, b=0),
+                yaxis_title='Normalized Price (Base = 100)'
+            )
+            st.plotly_chart(fig_compare, use_container_width=True)
+            
+            st.caption("⚠️ Comparison based on technical indicators only. Not financial advice.")
+    
+    except Exception as e:
+        st.warning(f"⚠️ Could not compare: {str(e)}")
     # ==========================================
     # AI CHATBOT
     # ==========================================
