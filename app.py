@@ -20,274 +20,40 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
 <style>
-    /* Hide Streamlit clutter */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
-    /* Main background */
-    .stApp {
-        background: linear-gradient(135deg, #0E1117 0%, #1a1f2e 100%);
-    }
-    
-    /* Main header */
     .main-header {
-        font-size: 2.8rem;
-        font-weight: 800;
-        background: linear-gradient(90deg, #00C853, #00B0FF, #00C853);
-        background-size: 200% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        padding: 1.5rem 0 0.5rem 0;
-        letter-spacing: -1px;
-        animation: shine 3s linear infinite;
-    }
-    
-    @keyframes shine {
-        to { background-position: 200% center; }
-    }
-    
-    .sub-header {
-        text-align: center;
-        color: #8892a6;
-        font-size: 1rem;
-        margin-bottom: 2rem;
-        font-weight: 400;
-    }
-    
-    /* Auth header */
-    .auth-header {
-        text-align: center;
-        font-size: 2.8rem;
+        font-size: 2.5rem;
         font-weight: 800;
         background: linear-gradient(90deg, #00C853, #00B0FF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        padding: 2rem 0 0.5rem 0;
+        text-align: center;
+        padding: 1rem 0 0.5rem 0;
     }
-    
+    .sub-header {
+        text-align: center;
+        color: #8892a6;
+        margin-bottom: 2rem;
+    }
+    .auth-header {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #00C853, #00B0FF);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        padding: 1.5rem 0 0.5rem 0;
+    }
     .auth-sub {
         text-align: center;
         color: #8892a6;
-        margin-bottom: 2.5rem;
+        margin-bottom: 2rem;
     }
-    
-    /* Metric cards - Glassmorphism */
     div[data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 1.2rem 1rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 14px;
+        padding: 1rem;
     }
-    
-    div[data-testid="stMetric"]:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 40px rgba(0, 200, 83, 0.2);
-        border-color: rgba(0, 200, 83, 0.3);
-    }
-    
-    div[data-testid="stMetricLabel"] {
-        font-weight: 500;
-        color: #8892a6 !important;
-        font-size: 0.85rem !important;
-    }
-    
-    div[data-testid="stMetricValue"] {
-        font-size: 1.6rem !important;
-        font-weight: 700 !important;
-        color: #ffffff !important;
-    }
-    
-    /* Buttons */
-    .stButton > button {
-        background: linear-gradient(135deg, #00C853, #00B0FF);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 0.6rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0, 200, 83, 0.3);
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 200, 83, 0.5);
-        background: linear-gradient(135deg, #00E676, #40C4FF);
-    }
-    
-    /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background: rgba(20, 25, 35, 0.95);
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    section[data-testid="stSidebar"] h2 {
-        color: #00C853;
-        font-weight: 700;
-    }
-    
-    /* Text inputs */
-    .stTextInput > div > div > input {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        color: white;
-        padding: 0.6rem 1rem;
-    }
-    
-    .stTextInput > div > div > input:focus {
-        border-color: #00C853;
-        box-shadow: 0 0 0 2px rgba(0, 200, 83, 0.2);
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        justify-content: center;
-        background: rgba(255, 255, 255, 0.03);
-        padding: 0.5rem;
-        border-radius: 12px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-        color: #8892a6;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #00C853, #00B0FF);
-        color: white !important;
-    }
-    
-    /* Alerts (success/info/warning/error) */
-    .stAlert {
-        border-radius: 12px;
-        border-left-width: 4px;
-    }
-    
-    /* Chat messages */
-    div[data-testid="stChatMessage"] {
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 12px;
-        padding: 0.8rem;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    /* Subheaders */
-    h3 {
-        color: #ffffff;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-    }
-    /* Sidebar text inputs */
-section[data-testid="stSidebar"] .stTextInput > div > div > input {
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-}
-
-/* Sidebar selectbox */
-section[data-testid="stSidebar"] .stSelectbox > div > div {
-    background: rgba(255, 255, 255, 0.06) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    color: #ffffff !important;
-}
-
-section[data-testid="stSidebar"] .stSelectbox svg {
-    fill: #00C853 !important;
-}
-
-/* Dropdown menu background */
-div[data-baseweb="popover"] {
-    background: #1a1f2e !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-div[data-baseweb="popover"] li {
-    background: #1a1f2e !important;
-    color: white !important;
-}
-
-div[data-baseweb="popover"] li:hover {
-    background: rgba(0, 200, 83, 0.15) !important;
-}
-
-/* Radio buttons in sidebar */
-section[data-testid="stSidebar"] .stRadio label {
-    color: #ffffff !important;
-}
-
-section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label span {
-    color: #c8d0e0 !important;
-}
-
-/* Labels in sidebar */
-section[data-testid="stSidebar"] label {
-    color: #b8c0d0 !important;
-    font-weight: 500 !important;
-}
-
-/* Main area labels */
-.stTextInput label, .stSelectbox label, .stRadio label {
-    color: #b8c0d0 !important;
-    font-weight: 500 !important;
-}
-
-/* Placeholder text */
-input::placeholder {
-    color: #666 !important;
-}
-
-/* Main area selectbox */
-.stSelectbox > div > div {
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: white !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-}
-
-/* Metric values - fix visibility */
-div[data-testid="stMetricLabel"] > div {
-    color: #8892a6 !important;
-}
-
-div[data-testid="stMetricValue"] {
-    color: #ffffff !important;
-    text-shadow: 0 0 20px rgba(0, 200, 83, 0.15);
-}
-
-/* Caption text */
-.stCaption, small {
-    color: #8892a6 !important;
-}
-
-/* Chat input */
-.stChatInput textarea {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: white !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-/* Tabs text */
-.stTabs [data-baseweb="tab"] {
-    color: #b8c0d0 !important;
-}
-
-.stTabs [aria-selected="true"] {
-    color: white !important;
-}
-
-/* Divider */
-hr {
-    border-color: rgba(255, 255, 255, 0.08) !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
