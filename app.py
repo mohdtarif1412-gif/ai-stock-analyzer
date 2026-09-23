@@ -2,7 +2,12 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime
+import hashlib
 import google.generativeai as genai
+
+# ==========================================
+# PAGE CONFIG
+# ==========================================
 st.set_page_config(
     page_title="AI Stock Analyzer",
     page_icon="📈",
@@ -10,6 +15,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ==========================================
+# CUSTOM CSS
+# ==========================================
 st.markdown("""
 <style>
     .main-header {
@@ -27,12 +35,105 @@ st.markdown("""
         font-size: 1rem;
         margin-bottom: 2rem;
     }
+    .auth-header {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(90deg, #00C853, #00B0FF);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        padding: 1rem 0;
+    }
+    .auth-sub {
+        text-align: center;
+        color: #888;
+        margin-bottom: 2rem;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        justify-content: center;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# ==========================================
+# AUTHENTICATION SYSTEM
+# ==========================================
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def init_users():
+    if 'users' not in st.session_state:
+        st.session_state.users = {
+            'admin': hash_password('admin123'),
+            'demo': hash_password('demo123')
+        }
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'current_user' not in st.session_state:
+        st.session_state.current_user = None
+
+def login_signup_page():
+    st.markdown('<div class="auth-header">📈 AI Stock Analyzer</div>', unsafe_allow_html=True)
+    st.markdown('<div class="auth-sub">Login to start your investment analysis</div>', unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        tab1, tab2 = st.tabs(["🔐 Login", "📝 Sign Up"])
+        
+        with tab1:
+            username = st.text_input("Username", key="login_username", placeholder="admin")
+            password = st.text_input("Password", type="password", key="login_password", placeholder="admin123")
+            
+            if st.button("Login", use_container_width=True, type="primary"):
+                if username in st.session_state.users and st.session_state.users[username] == hash_password(password):
+                    st.session_state.logged_in = True
+                    st.session_state.current_user = username
+                    st.success(f"✅ Welcome back, {username}!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid username or password")
+            
+            st.markdown("---")
+            st.caption("**Demo Credentials:**")
+            st.caption("Username: `admin` | Password: `admin123`")
+        
+        with tab2:
+            new_user = st.text_input("New Username", key="signup_username")
+            new_pass = st.text_input("New Password", type="password", key="signup_password")
+            confirm_pass = st.text_input("Confirm Password", type="password", key="signup_confirm")
+            
+            if st.button("Create Account", use_container_width=True, type="primary"):
+                if not new_user or not new_pass:
+                    st.error("❌ Please fill all fields")
+                elif len(new_user) < 3:
+                    st.error("❌ Username must be at least 3 characters")
+                elif len(new_pass) < 4:
+                    st.error("❌ Password must be at least 4 characters")
+                elif new_pass != confirm_pass:
+                    st.error("❌ Passwords don't match")
+                elif new_user in st.session_state.users:
+                    st.error("❌ Username already exists")
+                else:
+                    st.session_state.users[new_user] = hash_password(new_pass)
+                    st.success(f"✅ Account created, {new_user}! Now go to Login tab.")
+
+# Initialize auth
+init_users()
+
+# Agar logged in nahi hai to login page dikhao
+if not st.session_state.logged_in:
+    login_signup_page()
+    st.stop()
+
+# ==========================================
+# MAIN HEADER (after login)
+# ==========================================
 st.markdown('<div class="main-header">📈 AI Stock & Market Analyzer</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Real-time NSE Data • AI-Powered Insights • Smart Decisions</div>', unsafe_allow_html=True)
 
+# ==========================================
+# SIDEBAR
+# ==========================================
 with st.sidebar:
     st.header("🔍 Stock Search")
     ticker_input = st.text_input(
@@ -53,8 +154,31 @@ with st.sidebar:
     )
     
     st.markdown("---")
+    
+    # Chat toggle button
+    if "show_chat" not in st.session_state:
+        st.session_state.show_chat = False
+    
+    if st.button("🤖 Open AI Chat" if not st.session_state.show_chat else "❌ Close Chat",
+                 use_container_width=True, type="primary"):
+        st.session_state.show_chat = not st.session_state.show_chat
+        st.rerun()
+    
+    st.markdown("---")
+    st.caption(f"👤 Logged in as: **{st.session_state.current_user}**")
+    if st.button("🚪 Logout", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.current_user = None
+        st.session_state.show_chat = False
+        st.session_state.messages = []
+        st.rerun()
+    
+    st.markdown("---")
     st.caption("⚠️ Educational tool only. Not financial advice.")
 
+# ==========================================
+# DATA FETCH
+# ==========================================
 ticker = f"{ticker_input}.NS"
 
 @st.cache_data(ttl=300)
@@ -67,39 +191,40 @@ def fetch_data(ticker, period):
 try:
     with st.spinner(f"Loading {ticker} data..."):
         data, info = fetch_data(ticker, period)
-
+    
     if data.empty:
         st.error(f"❌ No data found for {ticker}. Check the ticker symbol.")
         st.stop()
+    
     data = data.dropna()
+    
     # ---------- TECHNICAL INDICATORS ----------
-    # 1. Moving Averages
     data['MA50'] = data['Close'].rolling(window=50).mean()
     data['MA200'] = data['Close'].rolling(window=200).mean()
-
-    # 2. RSI (14 day)
+    
     delta = data['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     data['RSI'] = 100 - (100 / (1 + rs))
-
-    # 3. MACD
+    
     exp1 = data['Close'].ewm(span=12, adjust=False).mean()
     exp2 = data['Close'].ewm(span=26, adjust=False).mean()
     data['MACD'] = exp1 - exp2
     data['Signal_Line'] = data['MACD'].ewm(span=9, adjust=False).mean()
-
-    # Latest values nikalo
+    
     latest_rsi = data['RSI'].iloc[-1]
     latest_macd = data['MACD'].iloc[-1]
     latest_signal = data['Signal_Line'].iloc[-1]
     latest_ma50 = data['MA50'].iloc[-1]
     latest_ma200 = data['MA200'].iloc[-1]
     latest_price = data['Close'].iloc[-1]
+    
+    # ---------- COMPANY INFO ----------
     company_name = info.get("longName", ticker_input)
     st.subheader(f"🏢 {company_name}")
     
+    # ---------- KEY METRICS ----------
     current_price = data['Close'].iloc[-1]
     prev_price = data['Close'].iloc[-2]
     change = current_price - prev_price
@@ -116,10 +241,12 @@ try:
     with col4:
         volume = data['Volume'].iloc[-1]
         st.metric("Volume", f"{volume/1e6:.2f}M")
-
+    
     st.markdown("---")
+    
+    # ---------- CHART ----------
     st.subheader(f"📊 {chart_type} Chart — {period}")
-
+    
     if chart_type == "Candlestick":
         fig = go.Figure(data=[go.Candlestick(
             x=data.index,
@@ -145,7 +272,7 @@ try:
             fill='tozeroy',
             line=dict(color='#00C853', width=2)
         )])
-
+    
     fig.update_layout(
         template='plotly_dark',
         height=500,
@@ -155,7 +282,8 @@ try:
         yaxis_title='Price (₹)'
     )
     st.plotly_chart(fig, use_container_width=True)
-
+    
+    # ---------- VOLUME ----------
     st.subheader("📊 Trading Volume")
     vol_fig = go.Figure(data=[go.Bar(
         x=data.index,
@@ -169,124 +297,122 @@ try:
         yaxis_title='Volume'
     )
     st.plotly_chart(vol_fig, use_container_width=True)
+    
+    # ---------- TECHNICAL INDICATORS SECTION ----------
+    st.markdown("---")
+    st.subheader("📊 Technical Indicators")
+    
+    tcol1, tcol2, tcol3 = st.columns(3)
+    
+    with tcol1:
+        if latest_rsi < 30:
+            st.metric("RSI (14)", f"{latest_rsi:.2f}", "Oversold 🟢")
+        elif latest_rsi > 70:
+            st.metric("RSI (14)", f"{latest_rsi:.2f}", "Overbought 🔴")
+        else:
+            st.metric("RSI (14)", f"{latest_rsi:.2f}", "Neutral ⚪")
+    
+    with tcol2:
+        macd_status = "Bullish" if latest_macd > latest_signal else "Bearish"
+        st.metric("MACD", f"{latest_macd:.2f}", macd_status)
+    
+    with tcol3:
+        ma_status = "Uptrend" if latest_ma50 > latest_ma200 else "Downtrend"
+        st.metric("MA50 vs MA200", f"₹{latest_ma50:.2f} / ₹{latest_ma200:.2f}", ma_status)
+    
+    # ---------- BUY/SELL SIGNAL ----------
+    st.markdown("---")
+    st.subheader("🎯 AI Trading Signal")
+    
+    score = 0
+    if latest_rsi < 30: score += 1
+    if latest_rsi > 70: score -= 1
+    if latest_macd > latest_signal: score += 1
+    else: score -= 1
+    if latest_ma50 > latest_ma200: score += 1
+    else: score -= 1
+    
+    if score >= 2:
+        st.success(f"🟢 **STRONG BUY** — Score: {score}/3")
+    elif score == 1:
+        st.info(f"🔵 **BUY** — Score: {score}/3")
+    elif score == 0:
+        st.warning(f"🟡 **HOLD** — Score: {score}/3")
+    elif score == -1:
+        st.warning(f"🟠 **SELL** — Score: {score}/3")
+    else:
+        st.error(f"🔴 **STRONG SELL** — Score: {score}/3")
+    
+    st.caption("⚠️ This is AI-generated analysis, not financial advice.")
+
+    # ==========================================
+    # AI CHATBOT
+    # ==========================================
+    if st.session_state.show_chat:
+        st.markdown("---")
+        st.subheader("🤖 AI Stock Assistant")
+        st.caption("Ask anything about stocks — replies in your language")
+        
+        try:
+            genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+            model = genai.GenerativeModel('gemini-3.6-flash')
+            
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+            
+            for msg in st.session_state.messages:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+            
+            if prompt := st.chat_input("Ask anything about stocks..."):
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                
+                context = f"""
+                Stock: {ticker_input}
+                Current Price: ₹{latest_price:.2f}
+                RSI: {latest_rsi:.2f}
+                MACD: {latest_macd:.2f}
+                MA50: ₹{latest_ma50:.2f}
+                MA200: ₹{latest_ma200:.2f}
+                Trading Signal Score: {score}/3
+                """
+                
+                full_prompt = f"""
+                You are an expert stock market AI assistant helping retail investors.
+                
+                IMPORTANT: Detect the language of the user's question and reply in the SAME language.
+                - If user asks in Hinglish (Roman Hindi), reply in Hinglish.
+                - If user asks in English, reply in English.
+                - If user asks in Hindi (Devanagari script), reply in Hindi.
+                
+                Keep answers short, clear, and educational.
+                
+                Current stock data:
+                {context}
+                
+                User question: {prompt}
+                
+                Give helpful response. Do NOT give financial advice.
+                """
+                
+                with st.chat_message("assistant"):
+                    with st.spinner("AI is thinking..."):
+                        response = model.generate_content(full_prompt)
+                        st.markdown(response.text)
+                
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+        
+        except Exception as e:
+            st.warning("⚠️ Please add GOOGLE_API_KEY in Streamlit Secrets.")
+            st.caption(f"Error: {str(e)}")
 
 except Exception as e:
     st.error(f"⚠️ Error: {str(e)}")
-# ---------- TECHNICAL ANALYSIS SECTION ----------
-st.markdown("---")
-st.subheader("📊 Technical Indicators")
 
-tcol1, tcol2, tcol3 = st.columns(3)
-
-with tcol1:
-    if latest_rsi < 30:
-        st.metric("RSI (14)", f"{latest_rsi:.2f}", "Oversold 🟢")
-    elif latest_rsi > 70:
-        st.metric("RSI (14)", f"{latest_rsi:.2f}", "Overbought 🔴")
-    else:
-        st.metric("RSI (14)", f"{latest_rsi:.2f}", "Neutral ⚪")
-
-with tcol2:
-    macd_status = "Bullish" if latest_macd > latest_signal else "Bearish"
-    st.metric("MACD", f"{latest_macd:.2f}", macd_status)
-
-with tcol3:
-    ma_status = "Uptrend" if latest_ma50 > latest_ma200 else "Downtrend"
-    st.metric("MA50 vs MA200", f"₹{latest_ma50:.2f} / ₹{latest_ma200:.2f}", ma_status)
-
-# ---------- BUY/SELL SIGNAL ----------
-st.markdown("---")
-st.subheader("🎯 AI Trading Signal")
-
-score = 0
-if latest_rsi < 30: score += 1
-if latest_rsi > 70: score -= 1
-if latest_macd > latest_signal: score += 1
-else: score -= 1
-if latest_ma50 > latest_ma200: score += 1
-else: score -= 1
-
-if score >= 2:
-    st.success(f"🟢 **STRONG BUY** — Score: {score}/3 (Indicators bullish hai)")
-elif score == 1:
-    st.info(f"🔵 **BUY** — Score: {score}/3 (Thoda positive trend)")
-elif score == 0:
-    st.warning(f"🟡 **HOLD** — Score: {score}/3 (Market confused hai)")
-elif score == -1:
-    st.warning(f"🟠 **SELL** — Score: {score}/3 (Thoda negative trend)")
-else:
-    st.error(f"🔴 **STRONG SELL** — Score: {score}/3 (Indicators bearish hai)")
-
-st.caption("⚠️ Ye AI-generated signal hai, financial advice nahi.")
+# ==========================================
+# FOOTER
+# ==========================================
 st.markdown("---")
 st.caption(f"Data source: Yahoo Finance | Last updated: {datetime.now().strftime('%d %b %Y, %H:%M')}")
-# ---------- AI CHATBOT (Toggle Mode) ----------
-# Session state initialize karo
-if "show_chat" not in st.session_state:
-    st.session_state.show_chat = False
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Sidebar me chat button
-with st.sidebar:
-    st.markdown("---")
-    if st.button("🤖 Open AI Chat" if not st.session_state.show_chat else "❌ Close Chat", 
-                 use_container_width=True, type="primary"):
-        st.session_state.show_chat = not st.session_state.show_chat
-        st.rerun()
-
-# Chat section (sirf jab button click ho)
-if st.session_state.show_chat:
-    st.markdown("---")
-    st.subheader("🤖 AI Stock Assistant")
-    st.caption("Stock ke bare me kuch bhi pucho — Hinglish me jawab milega")
-    
-    try:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        model = genai.GenerativeModel('gemini-3.6-flash')
-        
-        # Purane messages dikhao
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-        
-        # User input
-        if prompt := st.chat_input("Stock ke bare me kuch bhi pucho..."):
-            with st.chat_message("user"):
-                st.markdown(prompt)
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            
-            # Stock context
-            context = f"""
-            Stock: {ticker_input}
-            Current Price: ₹{latest_price:.2f}
-            RSI: {latest_rsi:.2f}
-            MACD: {latest_macd:.2f}
-            MA50: ₹{latest_ma50:.2f}
-            MA200: ₹{latest_ma200:.2f}
-            Trading Signal Score: {score}/3
-            """
-            
-            full_prompt = f"""
-            You are an expert stock market AI assistant.
-            Answer in simple Hinglish (Hindi + English mix, Roman script).
-            Keep answers short, clear, and educational.
-            
-            Current stock data:
-            {context}
-            
-            User question: {prompt}
-            
-            Give helpful response. Do NOT give financial advice.
-            """
-            
-            with st.chat_message("assistant"):
-                with st.spinner("AI soch raha hai..."):
-                    response = model.generate_content(full_prompt)
-                    st.markdown(response.text)
-            
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-    
-    except Exception as e:
-        st.warning("⚠️ Chatbot ke liye Streamlit Secrets me GOOGLE_API_KEY add karo.")
-        st.caption(f"Error: {str(e)}")
