@@ -362,7 +362,7 @@ else:
     news_data = []
     
     for item in news_items:
-        title = item.get['title']
+        title = item['title']
         publisher = item['publisher']
         link = item['link']
         sentiment, s_score = analyze_sentiment(title)
