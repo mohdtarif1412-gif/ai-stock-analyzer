@@ -194,12 +194,34 @@ def analyze_sentiment(text):
 
 @st.cache_data(ttl=600)
 def fetch_news(ticker):
-    """Fetch news from yfinance"""
+    """Fetch news from yfinance (supports new nested format)"""
     try:
         stock = yf.Ticker(ticker)
         news = stock.news
-        return news[:8] if news else []
-    except:
+        if not news:
+            return []
+        
+        parsed = []
+        for item in news[:8]:
+            if 'content' in item:
+                c = item['content']
+                title = c.get('title', '')
+                publisher = c.get('provider', {}).get('displayName', 'Unknown')
+                link = c.get('canonicalUrl', {}).get('url', '#')
+            else:
+                title = item.get('title', '')
+                publisher = item.get('publisher', 'Unknown')
+                link = item.get('link', '#')
+            
+            if title:
+                parsed.append({
+                    'title': title,
+                    'publisher': publisher,
+                    'link': link
+                })
+        
+        return parsed
+    except Exception as e:
         return []
 @st.cache_data(ttl=300)
 def fetch_data(ticker, period):
@@ -340,9 +362,9 @@ else:
     news_data = []
     
     for item in news_items:
-        title = item.get('title', '')
-        publisher = item.get('publisher', 'Unknown')
-        link = item.get('link', '#')
+        title = item.get['title']
+        publisher = item['publisher']
+        link = item['link']
         sentiment, s_score = analyze_sentiment(title)
         total_score += s_score
         news_data.append({
