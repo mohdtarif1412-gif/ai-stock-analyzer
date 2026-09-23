@@ -157,7 +157,7 @@ with st.sidebar:
     st.markdown("---")
     compare_mode = st.checkbox("⚖️ Compare with another stock")
     if compare_mode:
-    ticker_input_2 = st.text_input(
+       ticker_input_2 = st.text_input(
         "Second NSE Ticker",
         value="TCS",
         help="Example: TCS, INFY, HDFCBANK"
