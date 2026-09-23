@@ -122,13 +122,13 @@ def login_signup_page():
 # Initialize auth
 init_users()
 
-# Agar logged in nahi hai to login page dikhao
+# Login check
 if not st.session_state.logged_in:
     login_signup_page()
     st.stop()
 
 # ==========================================
-# MAIN HEADER (after login)
+# MAIN HEADER
 # ==========================================
 st.markdown('<div class="main-header">📈 AI Stock & Market Analyzer</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Real-time NSE Data • AI-Powered Insights • Smart Decisions</div>', unsafe_allow_html=True)
@@ -147,21 +147,24 @@ with st.sidebar:
     period = st.selectbox(
         "Time Period",
         ["1mo", "3mo", "6mo", "1y", "2y", "5y"],
-        index=2
+        index=3
     )
     
     chart_type = st.radio(
         "Chart Type",
         ["Candlestick", "Line", "Area"]
     )
+    
     st.markdown("---")
     compare_mode = st.checkbox("⚖️ Compare with another stock")
+    ticker_input_2 = ""
     if compare_mode:
-       ticker_input_2 = st.text_input(
-        "Second NSE Ticker",
-        value="TCS",
-        help="Example: TCS, INFY, HDFCBANK"
-     ).upper().strip()
+        ticker_input_2 = st.text_input(
+            "Second NSE Ticker",
+            value="TCS",
+            help="Example: TCS, INFY, HDFCBANK"
+        ).upper().strip()
+    
     st.markdown("---")
     
     # Chat toggle button
@@ -196,6 +199,16 @@ def fetch_data(ticker, period):
     data = stock.history(period=period)
     info = stock.info
     return data, info
+
+# Variables for later use
+latest_price = 0
+latest_rsi = 0
+latest_macd = 0
+latest_signal = 0
+latest_ma50 = 0
+latest_ma200 = 0
+score = 0
+data = None
 
 try:
     with st.spinner(f"Loading {ticker} data..."):
@@ -333,7 +346,6 @@ try:
     st.markdown("---")
     st.subheader("🎯 AI Trading Signal")
     
-    score = 0
     if latest_rsi < 30: score += 1
     if latest_rsi > 70: score -= 1
     if latest_macd > latest_signal: score += 1
@@ -353,10 +365,14 @@ try:
         st.error(f"🔴 **STRONG SELL** — Score: {score}/3")
     
     st.caption("⚠️ This is AI-generated analysis, not financial advice.")
-    # ==========================================
+
+except Exception as e:
+    st.error(f"⚠️ Error: {str(e)}")
+
+# ==========================================
 # STOCK COMPARISON
 # ==========================================
-if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
+if compare_mode and ticker_input_2 and data is not None:
     st.markdown("---")
     st.subheader("⚖️ Stock Comparison")
     
@@ -371,7 +387,6 @@ if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
         else:
             data2 = data2.dropna()
             
-            # Technical indicators for stock 2
             data2['MA50'] = data2['Close'].rolling(window=50).mean()
             data2['MA200'] = data2['Close'].rolling(window=200).mean()
             
@@ -393,7 +408,6 @@ if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
             ma200_2 = data2['MA200'].iloc[-1]
             price_2 = data2['Close'].iloc[-1]
             
-            # Score for stock 2
             score2 = 0
             if rsi_2 < 30: score2 += 1
             if rsi_2 > 70: score2 -= 1
@@ -402,7 +416,6 @@ if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
             if ma50_2 > ma200_2: score2 += 1
             else: score2 -= 1
             
-            # Side-by-side metrics
             col1, col2 = st.columns(2)
             
             with col1:
@@ -421,7 +434,6 @@ if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
                 st.metric("MA50", f"₹{ma50_2:.2f}")
                 st.metric("Trading Score", f"{score2}/3")
             
-            # Winner
             st.markdown("### 🏆 Verdict")
             if score > score2:
                 st.success(f"**{ticker_input}** looks better based on technical indicators (Score: {score} vs {score2})")
@@ -430,7 +442,6 @@ if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
             else:
                 st.info(f"Both stocks are equally rated (Score: {score} vs {score2})")
             
-            # Normalized comparison chart
             st.markdown("### 📊 Price Comparison (Normalized to 100)")
             fig_compare = go.Figure()
             fig_compare.add_trace(go.Scatter(
@@ -460,71 +471,69 @@ if compare_mode and 'ticker_input_2' in locals() and ticker_input_2:
     
     except Exception as e:
         st.warning(f"⚠️ Could not compare: {str(e)}")
-    # ==========================================
-    # AI CHATBOT
-    # ==========================================
-    if st.session_state.show_chat:
-        st.markdown("---")
-        st.subheader("🤖 AI Stock Assistant")
-        st.caption("Ask anything about stocks — replies in your language")
-        
-        try:
-            genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-            model = genai.GenerativeModel('gemini-3.6-flash')
-            
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-            
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-            
-            if prompt := st.chat_input("Ask anything about stocks..."):
-                with st.chat_message("user"):
-                    st.markdown(prompt)
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                
-                context = f"""
-                Stock: {ticker_input}
-                Current Price: ₹{latest_price:.2f}
-                RSI: {latest_rsi:.2f}
-                MACD: {latest_macd:.2f}
-                MA50: ₹{latest_ma50:.2f}
-                MA200: ₹{latest_ma200:.2f}
-                Trading Signal Score: {score}/3
-                """
-                
-                full_prompt = f"""
-                You are an expert stock market AI assistant helping retail investors.
-                
-                IMPORTANT: Detect the language of the user's question and reply in the SAME language.
-                - If user asks in Hinglish (Roman Hindi), reply in Hinglish.
-                - If user asks in English, reply in English.
-                - If user asks in Hindi (Devanagari script), reply in Hindi.
-                
-                Keep answers short, clear, and educational.
-                
-                Current stock data:
-                {context}
-                
-                User question: {prompt}
-                
-                Give helpful response. Do NOT give financial advice.
-                """
-                
-                with st.chat_message("assistant"):
-                    with st.spinner("AI is thinking..."):
-                        response = model.generate_content(full_prompt)
-                        st.markdown(response.text)
-                
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-        
-        except Exception as e:
-            st.warning("⚠️ Please add GOOGLE_API_KEY in Streamlit Secrets.")
-            st.caption(f"Error: {str(e)}")
 
-except Exception as e:
-    st.error(f"⚠️ Error: {str(e)}")
+# ==========================================
+# AI CHATBOT
+# ==========================================
+if st.session_state.show_chat:
+    st.markdown("---")
+    st.subheader("🤖 AI Stock Assistant")
+    st.caption("Ask anything about stocks — replies in your language")
+    
+    try:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+        model = genai.GenerativeModel('gemini-3.6-flash')
+        
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+        
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+        
+        if prompt := st.chat_input("Ask anything about stocks..."):
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            
+            context = f"""
+            Stock: {ticker_input}
+            Current Price: ₹{latest_price:.2f}
+            RSI: {latest_rsi:.2f}
+            MACD: {latest_macd:.2f}
+            MA50: ₹{latest_ma50:.2f}
+            MA200: ₹{latest_ma200:.2f}
+            Trading Signal Score: {score}/3
+            """
+            
+            full_prompt = f"""
+            You are an expert stock market AI assistant helping retail investors.
+            
+            IMPORTANT: Detect the language of the user's question and reply in the SAME language.
+            - If user asks in Hinglish (Roman Hindi), reply in Hinglish.
+            - If user asks in English, reply in English.
+            - If user asks in Hindi (Devanagari script), reply in Hindi.
+            
+            Keep answers short, clear, and educational.
+            
+            Current stock data:
+            {context}
+            
+            User question: {prompt}
+            
+            Give helpful response. Do NOT give financial advice.
+            """
+            
+            with st.chat_message("assistant"):
+                with st.spinner("AI is thinking..."):
+                    response = model.generate_content(full_prompt)
+                    st.markdown(response.text)
+            
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+    
+    except Exception as e:
+        st.warning("⚠️ Please add GOOGLE_API_KEY in Streamlit Secrets.")
+        st.caption(f"Error: {str(e)}")
 
 # ==========================================
 # FOOTER
